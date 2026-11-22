@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the mod and runs the in-game scenarios headless through BasHarness (Linux + Proton only).
 #   tools/harness.sh                      # all harness/*.txt, in name order
-#   tools/harness.sh harness/smoke.txt
+#   tools/harness.sh harness/0-smoke.txt
 # Every run starts from a fresh harness prefix (default options). Only one harness run
 # at a time (BasHarness holds a lock). BAS_HARNESS_DIR overrides where BasHarness lives
 # (default: ../BasHarness next to this repo). Template: AchillesBAS tools/harness.sh.

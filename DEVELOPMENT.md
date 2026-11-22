@@ -7,10 +7,10 @@ Everything about how the mod is built and tested: versions, the game APIs used a
 | Step | State |
 |---|---|
 | 1. Project, pure logic + unit tests, game glue, Mod Menu, smoke scenario | built 2026-11-22 on Windows. **Unit tests: 90/90 pass** (`dotnet test`; written first: 63 of 90 failed on the stubs, the 27 option-spec tests passed, then all green after the logic). **Release build: 0 warnings, 0 errors** against the Windows install's `ThunderRoad.dll`. |
-| 2. Headless smoke run | `harness/smoke.txt` written (load lines, 16 options with defaults, live toggles, "Turned off" log line, no exceptions). **Not run**: BasHarness runs on Linux + Proton only, and this was built on Windows. |
-| 3. Real slam in the game | **Not run**: no harness step can grab an NPC's hand and slam it (see "Harness"). Needs the headset (or the harness steps below). |
+| 2. Headless runs | **2/2 pass** on Linux (2026-11-22, `artifacts/harness/20261122-210619`): `0-smoke.txt` (renamed from `smoke.txt` so it runs first; load lines, 16 options with defaults, live toggles, "Turned off" line, no exceptions) and `1-grab.txt` (a real grab of the NPC's forearm starts the watch, letting go stops it, Forearm Grab Counts off starts nothing). No code change was needed. |
+| 3. Real slam in the game | **Not passing headless yet** (`harness/owed/1-slam.txt`, see "Harness"). Headset check owed. |
 
-Nothing in this repo has run inside the game yet. Every "verified" below means read in the decompiled DLL and compiled against it.
+The headless runs are the only in-game evidence so far (no headset). Every other "verified" below means read in the decompiled DLL and compiled against it.
 
 ## Versions
 
@@ -57,7 +57,7 @@ The decompiled source is not part of this repo.
 | Assumption | Why it matters | How to check |
 |---|---|---|
 | `impactVelocity.magnitude` of a hard slam is well above 2.5 m/s and a light bump below | Min Slam Speed's default | Debug Logging: `SLAM`/`SKIP` lines show the speed of every contact |
-| Holding an NPC's wrist uses a handle on the hand or forearm part (not the upper arm) | Which grabs count | `GRAB` line on grab; nothing logged means the grab did not count |
+| ~~Holding an NPC's wrist uses a handle on the hand or forearm part~~ **Seen 2026-11-22 (harness):** the hand part has no handle; the arm handle `HandleArmLeft`/`HandleArmRight` sits on the forearm (`LeftArm`/`RightArm`, section Lower), and grabbing it logs `GRAB ... watching Left hand with 'SwordShortCommon' (3 bodies)` | Which grabs count | done |
 | Walls and floors have no `ColliderGroup` | They classify as World | `SLAM ... World` lines when slamming into a wall |
 | The NPC's AI does not drop or swap the weapon by itself when its wrist is held | Otherwise the watch ends before a slam | `GRAB ... stopped watching` right after the grab |
 | Slam Cooldown 0.3 s merges the several colliders of one slam into one | Otherwise one slam counts twice | two `SLAM` lines for one slam |
@@ -93,20 +93,28 @@ Per frame: one read of each player hand's grab (no allocation; a struct and a fe
 
 ## Harness
 
-`harness/smoke.txt` uses only existing BasHarness steps. A real slam test needs steps BasHarness does not have (BasHarness README, 2026-11-22):
+| File | Checks |
+|---|---|
+| `0-smoke.txt` | load lines, 16 options with categories and defaults, live toggles, "Turned off" line, no exceptions |
+| `1-grab.txt` | `player-grab-npc LeftArm section=Lower` on a HumanDummy holding a sword: `GRAB ... watching Left hand with 'SwordShortCommon'`, `stopped watching` on release; with Forearm Grab Counts off no watch |
+| `owed/1-slam.txt` | not run by `tools/harness.sh`; fails, see below |
 
-1. `player-grab-npc-part <RagdollPart.Type> [hand=right]` - the player's hand grabs a handle of the spawned NPC's part (`RagdollHand.Grab(HandleRagdoll)`), so the ragdoll counts as grabbed.
-2. A solid object next to the NPC's hand: either a step that spawns a static box collider (no `ColliderGroup`, = World) at an offset from the NPC, or an NPC spawned next to an Arena wall.
-3. A controller move that drives the held hand through that object at a set speed (like `player-push`, towards a point instead of the NPC), repeated for Slams To Disarm.
+BasHarness got the steps for this on 2026-11-22: `player-grab-npc` (the controller reaches for the handle, then `RagdollHand.Grab`), `player-slam` (controller moved at a set speed, real physics), `place-block` (a static box with the ground's layer and physics material, so it counts as World). Run `tools/harness.sh harness/owed/1-slam.txt` by hand.
 
-Then: `expect-npc holding False` after the second slam, `expect-log SLAM`, a regrab check (`npc-grab` during No Regrab Time → released). Without those steps the slam itself is a headset check.
+**Why the slam does not pass yet** (20 runs, logs under `artifacts/harness/20261122-20*`):
+
+- The block does get hit, but the first blocks had no physics material the game knows; `CollisionHandler.OnCollisionEnter` then logs `Target physics material not found` and raises no event. Fixed in `place-block` (it copies the ground's material); the warnings are gone.
+- The HumanDummy stands about 0.8 m in front of the player's shoulders. When the held forearm is pushed down onto a block, the game drops the grab: `PlayerHand.ManagedUpdate` lets go when the grip is farther from the shoulders than the arm reaches (1.22 m here) and `PlayerHand.stuckBehaviour` is `Drop` (the default). A block high enough to stay in reach sits right under the NPC's hand, so the sword already rests on it and there is no impact.
+- Every slam contact so far was classed `Creature` (the NPC's arm against the player's hand or bodies), never `World`. The mod's decision for those is right (`Creature` never counts).
+
+Next cheapest step: get the NPC closer to the player's shoulders (a step that moves the player towards the NPC), or set `PlayerHand.stuckBehaviour = Hold` for the scenario (a real game option, but not the default). In the headset the same reach rule applies: a player slamming a wrist onto a low table must step in or crouch.
 
 ## Build
 
 ```sh
 dotnet test                                    # unit tests (no game needed)
 dotnet build src/SlamDisarm -c Release         # mod in dist/SlamDisarm
-tools/harness.sh harness/smoke.txt             # Linux: headless smoke run via BasHarness
+tools/harness.sh                               # Linux: headless runs via BasHarness (harness/*.txt)
 tools/deploy.sh                                # Linux: both installs, md5 checked
 # other install path:  -p:BasDir="/path/to/Blade & Sorcery"
 ```

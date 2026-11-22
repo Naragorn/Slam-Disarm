@@ -1,0 +1,47 @@
+# OWED, does not pass yet (2026-11-22): not run by tools/harness.sh (only harness/*.txt).
+# Run by hand: tools/harness.sh harness/owed/1-slam.txt
+# What blocks it: the NPC stands about 0.8 m from the player's shoulders; when the held forearm is
+# pushed down onto the block the game drops the grab (PlayerHand: grip farther from the shoulders
+# than the arm reaches, 1.22 m, StuckBehaviour.Drop). See DEVELOPMENT.md, "Harness".
+# A real slam: the player grabs the NPC's sword forearm and slams it down onto a block twice
+# (BasHarness player-grab-npc, place-block, player-slam: real physics, the game's own collision
+# events). The block stands in for a table: a static collider without a ColliderGroup, which the
+# mod counts as World. The floor is out of reach: the game drops a grab beyond the player's arm.
+# The second slam disarms; the hand may not pick the sword up again for No Regrab Time.
+wait-level
+set-option SlamDisarm "Slam Disarm Enabled" true
+set-option SlamDisarm "Debug Logging" true
+set-option SlamDisarm "Slams To Disarm" 2
+set-option SlamDisarm "Min Slam Speed" 2.5
+set-option SlamDisarm "Slam Window" 3
+set-option SlamDisarm "Disarm Chance" 1
+set-option SlamDisarm "No Regrab Time" 5
+frame-rate 90
+
+# HumanDummy runs no behaviour tree, so it never draws its weapon: put the sword into its hand.
+spawn-npc HumanMale distance=0.5 facing=0 brain=HumanDummy container=CivilianMeleeSword
+npc-grab SwordShortCommon hand=left
+expect-npc holding True within=2
+record-start slam fps=30 width=960 height=540 views=side,npc distance=2.2 rise=1.0 angle=70
+mark
+player-grab-npc LeftArm section=Lower
+expect-log [SlamDisarm] GRAB |
+# Pull his arm up and towards the player first: within the arm's reach and clear of the block.
+player-slam 0,0.1,-0.3 speed=1 hold=0.5 back=false
+place-block 0,-0.65,0 size=0.6
+player-slam 0,-0.8,0 speed=6
+expect-log [SlamDisarm] SLAM |
+player-slam 0,-0.8,0 speed=6
+await-log 2 [SlamDisarm] DISARM |
+wait 1
+record-stop
+expect-npc holding False within=2
+player-release
+
+# No regrab: a sword put into the hand is let go again.
+mark
+npc-grab SwordShortCommon hand=left
+expect-npc holding False within=1
+expect-log [SlamDisarm] REGRAB |
+expect-no-log Exception
+quit

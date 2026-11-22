@@ -1,10 +1,9 @@
 # Slam Disarm: loads headless, its script starts, every Mod Menu option is there
 # with its default, options apply live, the level runs without exceptions.
-# Run: tools/harness.sh harness/smoke.txt
+# Run: tools/harness.sh harness/0-smoke.txt
 # Checks the defaults, so it must be the first scenario of a run (fresh prefix);
 # scenarios in one run share the prefix and the game keeps option values.
-# A real slam is not in here: BasHarness has no step to grab an NPC's hand and
-# swing it into something (see DEVELOPMENT.md, "Harness").
+# The slam itself is in 1-slam.txt.
 wait-level
 expect-log [ModManager][ModOption][SlamDisarm] Loaded 16 ModOptions
 expect-log [SlamDisarm] Loaded Slam Disarm

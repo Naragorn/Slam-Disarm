@@ -1,0 +1,30 @@
+# Which grabs count, with a real grab of the NPC's forearm (BasHarness player-grab-npc): the
+# watch starts on the forearm's hand and its weapon and stops when the player lets go; with
+# Forearm Grab Counts off the same grab starts nothing. The slam itself: harness/owed/1-slam.txt.
+# The NPC's hand part has no handle (the game's HandleArmLeft sits on the forearm, LeftArm Lower).
+wait-level
+set-option SlamDisarm "Slam Disarm Enabled" true
+set-option SlamDisarm "Debug Logging" true
+set-option SlamDisarm "Forearm Grab Counts" true
+frame-rate 90
+
+# HumanDummy runs no behaviour tree, so it never draws its weapon: put the sword into its hand.
+spawn-npc HumanMale distance=0.5 facing=0 brain=HumanDummy
+npc-grab SwordShortCommon hand=left
+expect-npc holding True within=2
+mark
+player-grab-npc LeftArm section=Lower
+expect-log [SlamDisarm] GRAB |
+expect-log watching Left hand with 'SwordShortCommon'
+player-release
+expect-log | stopped watching
+
+set-option SlamDisarm "Forearm Grab Counts" false
+mark
+player-grab-npc LeftArm section=Lower
+wait 0.5
+expect-no-log | watching
+player-release
+set-option SlamDisarm "Forearm Grab Counts" true
+expect-no-log Exception
+quit
