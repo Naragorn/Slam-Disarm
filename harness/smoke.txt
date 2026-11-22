@@ -1,0 +1,62 @@
+# Slam Disarm: loads headless, its script starts, every Mod Menu option is there
+# with its default, options apply live, the level runs without exceptions.
+# Run: tools/harness.sh harness/smoke.txt
+# Checks the defaults, so it must be the first scenario of a run (fresh prefix);
+# scenarios in one run share the prefix and the game keeps option values.
+# A real slam is not in here: BasHarness has no step to grab an NPC's hand and
+# swing it into something (see DEVELOPMENT.md, "Harness").
+wait-level
+expect-log [ModManager][ModOption][SlamDisarm] Loaded 16 ModOptions
+expect-log [SlamDisarm] Loaded Slam Disarm
+expect-log [ModManager][ThunderScript][SlamDisarm] Loaded ThunderScript: SlamDisarm.SlamDisarmScript
+expect-log [SlamDisarm] Enabled, watching the player's grabs
+
+option-exists SlamDisarm "Slam Disarm Enabled" category="Slam Disarm" type=Boolean save=true
+option-exists SlamDisarm "Min Slam Speed" category="Slam Disarm" type=Single save=true
+option-exists SlamDisarm "Slams To Disarm" category="Slam Disarm" type=Single save=true
+option-exists SlamDisarm "Slam Window" category="Slam Disarm" type=Single save=true
+option-exists SlamDisarm "Slam Cooldown" category="Slam Disarm" type=Single save=true
+option-exists SlamDisarm "Disarm Chance" category="Slam Disarm" type=Single save=true
+option-exists SlamDisarm "Objects Count" category="Slam Disarm" type=Boolean save=true
+option-exists SlamDisarm "Forearm Grab Counts" category="Slam Disarm" type=Boolean save=true
+option-exists SlamDisarm "Weapon Grab Counts" category="Slam Disarm" type=Boolean save=true
+option-exists SlamDisarm "Shields Can Be Slammed" category="Slam Disarm" type=Boolean save=true
+option-exists SlamDisarm "Drop Both Hands" category="Slam Disarm" type=Boolean save=true
+option-exists SlamDisarm "No Regrab Time" category="Slam Disarm" type=Single save=true
+option-exists SlamDisarm "Pain Sound" category="Slam Disarm" type=Boolean save=true
+option-exists SlamDisarm "Haptic Pulse" category="Slam Disarm" type=Boolean save=true
+option-exists SlamDisarm "Hand Damage" category="Slam Disarm" type=Single save=true
+option-exists SlamDisarm "Debug Logging" category=Debug type=Boolean save=true
+
+# Defaults
+expect-option SlamDisarm "Slam Disarm Enabled" true
+expect-option SlamDisarm "Min Slam Speed" 2.5
+expect-option SlamDisarm "Slams To Disarm" 2
+expect-option SlamDisarm "Slam Window" 3
+expect-option SlamDisarm "Slam Cooldown" 0.3
+expect-option SlamDisarm "Disarm Chance" 1
+expect-option SlamDisarm "Objects Count" true
+expect-option SlamDisarm "Forearm Grab Counts" true
+expect-option SlamDisarm "Weapon Grab Counts" true
+expect-option SlamDisarm "Shields Can Be Slammed" false
+expect-option SlamDisarm "Drop Both Hands" false
+expect-option SlamDisarm "No Regrab Time" 5
+expect-option SlamDisarm "Pain Sound" true
+expect-option SlamDisarm "Haptic Pulse" true
+expect-option SlamDisarm "Hand Damage" 0
+expect-option SlamDisarm "Debug Logging" false
+
+# Live toggles reach the static fields; turning the mod off is logged once
+mark
+set-option SlamDisarm "Slams To Disarm" 4
+expect-option SlamDisarm "Slams To Disarm" 4
+set-option SlamDisarm "Slam Disarm Enabled" false
+expect-option SlamDisarm "Slam Disarm Enabled" false
+expect-log [SlamDisarm] Turned off in the Mod Menu
+set-option SlamDisarm "Slam Disarm Enabled" true
+set-option SlamDisarm "Slams To Disarm" 2
+wait 3
+
+expect-no-log Exception
+screenshot slamdisarm-arena
+quit
