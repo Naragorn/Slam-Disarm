@@ -115,7 +115,7 @@ namespace SlamDisarm
             var decision = SlamRules.Decide(SeriesOf(npc), target, speed, Time.time, Random.value, ModOptions.SlamSettings());
             if (ModOptions.DebugLogging)
             {
-                LogDecision(npc, target, speed, decision);
+                LogDecision(npc, target, speed, decision, hit);
             }
             switch (decision.Outcome)
             {
@@ -133,9 +133,9 @@ namespace SlamDisarm
             }
         }
 
-        private static void LogDecision(Creature npc, SlamTarget target, float speed, SlamDecision decision)
+        private static void LogDecision(Creature npc, SlamTarget target, float speed, SlamDecision decision, CollisionInstance hit)
         {
-            var what = GameAdapters.Label(npc) + " | " + target + " at " + F(speed) + " m/s | ";
+            var what = GameAdapters.Label(npc) + " | " + target + " at " + F(speed) + " m/s (" + GameAdapters.Contact(hit) + ") | ";
             var count = decision.Count + "/" + decision.Needed;
             switch (decision.Outcome)
             {

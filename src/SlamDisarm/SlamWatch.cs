@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SlamDisarm.Logic;
 using ThunderRoad;
 
 namespace SlamDisarm
@@ -14,6 +15,9 @@ namespace SlamDisarm
         private readonly List<CollisionHandler> subscribed = new List<CollisionHandler>();
         private readonly CollisionHandler.CollisionEvent onContact;
         private readonly Action<SlamWatch, CollisionInstance> contact;
+
+        /// <summary>The NPC hand handler whose collision events the mod turned on (see <see cref="HandEvents"/>), else null.</summary>
+        private CollisionHandler handTurnedOn;
 
         public SlamWatch(Side side, Action<SlamWatch, CollisionInstance> contact)
         {
@@ -49,6 +53,12 @@ namespace SlamDisarm
             NpcHand = npcHand;
             Weapon = weapon;
             Subscribe(npcHand.collisionHandler);
+            var hand = npcHand.collisionHandler;
+            if (hand != null && HandEvents.TurnOn(hand.active))
+            {
+                hand.active = true;
+                handTurnedOn = hand;
+            }
             if (npcHand.lowerArmPart != null)
             {
                 Subscribe(npcHand.lowerArmPart.collisionHandler);
@@ -82,10 +92,29 @@ namespace SlamDisarm
                 ModLog.Verbose("GRAB | " + GameAdapters.Label(Npc) + " | stopped watching");
             }
             subscribed.Clear();
+            GiveBackHandEvents();
             PlayerHand = null;
             Npc = null;
             NpcHand = null;
             Weapon = null;
+        }
+
+        private void GiveBackHandEvents()
+        {
+            var hand = handTurnedOn;
+            handTurnedOn = null;
+            if (hand == null || NpcHand == null)
+            {
+                return;
+            }
+            var state = NpcHand.ragdoll.state;
+            // The game's own rule (Ragdoll.RefreshPartJointAndCollision): events on while Inert, Destabilized or Frozen.
+            var gameKeepsOn = state == Ragdoll.State.Inert || state == Ragdoll.State.Destabilized || state == Ragdoll.State.Frozen;
+            var restore = HandEvents.Restore(turnedOnByMod: true, hand.active, gameKeepsOn);
+            if (restore.HasValue)
+            {
+                hand.active = restore.Value;
+            }
         }
 
         private void Subscribe(CollisionHandler handler)

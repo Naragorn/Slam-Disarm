@@ -41,7 +41,7 @@ Blade & Sorcery (VR) mod built against the game's own `ThunderRoad.dll` (Unity +
 ## Build order
 
 1. Project setup, pure logic with unit tests, game glue, Mod Menu, smoke scenario. **Done 2026-11-22** (see `DEVELOPMENT.md`, "Status").
-2. Headless runs on Linux (`tools/harness.sh`): smoke and grab. **Done 2026-11-22**, 2/2 pass. The real slam (`harness/owed/1-slam.txt`) does not pass headless yet (DEVELOPMENT.md, "Harness").
+2. Headless runs on Linux (`tools/harness.sh`): smoke, grab and a real slam. **Done 2026-11-23**, 3/3 pass (`harness/2-slam.txt` needed v0.1.1: the mod turns a standing NPC's hand collision events on while it watches the grab; DEVELOPMENT.md, "Harness").
 3. Headset check: real grab, real slam, Min Slam Speed tuning, feel of the feedback. Owed.
 4. Harness steps for a real slam (see `DEVELOPMENT.md`, "Harness") if the headset check leaves questions.
 

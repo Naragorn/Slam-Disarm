@@ -57,6 +57,27 @@ namespace SlamDisarm
             return SlamRules.Classify(group != null, isPart, item != null, item != null && IsHeld(item));
         }
 
+        /// <summary>For the debug log: which collider met which, as "source -> target" (the target "world" when it has no ColliderGroup).</summary>
+        public static string Contact(CollisionInstance hit)
+        {
+            return ContactSide(hit.sourceCollider, hit.sourceColliderGroup) + " -> " + ContactSide(hit.targetCollider, hit.targetColliderGroup);
+        }
+
+        private static string ContactSide(UnityEngine.Collider collider, ColliderGroup group)
+        {
+            var name = collider != null ? collider.name : "?";
+            var handler = group != null ? group.collisionHandler : null;
+            if (handler == null)
+            {
+                return (group == null ? "world " : "") + "'" + name + "'";
+            }
+            if (handler.isRagdollPart)
+            {
+                return Label(handler.ragdollPart.ragdoll.creature) + " " + handler.ragdollPart.type + " '" + name + "'";
+            }
+            return handler.item != null ? "item " + Label(handler.item) + " '" + name + "'" : "'" + name + "'";
+        }
+
         /// <summary>The item an NPC hand holds, or null.</summary>
         public static Item HeldItem(RagdollHand hand)
         {

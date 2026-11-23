@@ -1,0 +1,51 @@
+# A real slam: the player grabs the NPC's sword forearm, lifts it up and out to his side, and slams it down onto a block
+# twice (BasHarness player-grab-npc, player-slam, place-block: real physics, the game's own collision events). The block
+# stands in for a table: a static collider without a ColliderGroup, which the mod counts as World. The second slam
+# disarms; the hand may not pick the sword up again for No Regrab Time.
+# player-eyes first: the mock headset sits 0.16 m above the creature's eyes otherwise, and the game measures the grab's
+# reach from the head (PlayerHand drops a grip farther than 1.22 m from it).
+# The lift: his hand hangs in front of his thigh, so a block under it would sit inside his leg, and an arm pulled further
+# down from there meets the end of his shoulder's reach (2026-11-23: at most 0.24 m of travel, 2.5 m/s at best). Lifted
+# 0.3 m and moved 0.2 m out, the hand falls 0.24 m onto the block and meets it at about 2.6 m/s.
+# What this caught (2026-11-23): the game raises no collision events for a standing NPC's hand (its CollisionHandler is
+# off; the wrist handle turns them on for the arms only), so the palm hit the block at 2.7 m/s and the mod saw nothing.
+# The mod now turns the hand's events on while it watches the grab (Logic/HandEvents).
+wait-level
+set-option SlamDisarm "Slam Disarm Enabled" true
+set-option SlamDisarm "Debug Logging" true
+set-option SlamDisarm "Slams To Disarm" 2
+set-option SlamDisarm "Min Slam Speed" 2.5
+set-option SlamDisarm "Slam Window" 3
+set-option SlamDisarm "Disarm Chance" 1
+set-option SlamDisarm "No Regrab Time" 5
+frame-rate 90
+player-eyes
+
+# HumanDummy runs no behaviour tree, so it never draws its weapon: put the sword into its hand.
+spawn-npc HumanMale distance=0.5 facing=0 brain=HumanDummy container=CivilianMeleeSword
+npc-grab SwordShortCommon hand=left
+expect-npc holding True within=2
+player-grab-npc LeftArm section=Lower
+expect-log [SlamDisarm] GRAB |
+wait 1
+player-slam 0.2,0.3,0 speed=1.5 hold=1 back=false
+place-block 0,-0.30,0 size=0.12 from=npc-hand
+record-start slam fps=30 width=960 height=540 views=side,npc distance=1.8 rise=0.8 angle=90
+mark
+player-slam 0,-0.7,0 speed=6
+expect-log [SlamDisarm] SLAM |
+wait 0.5
+player-slam 0,-0.7,0 speed=6
+await-log 2 [SlamDisarm] DISARM |
+wait 1
+record-stop
+expect-npc holding False within=2
+player-release
+
+# No regrab: a sword put into the hand is let go again.
+mark
+npc-grab SwordShortCommon hand=left
+expect-npc holding False within=1
+expect-log [SlamDisarm] REGRAB |
+expect-no-log Exception
+quit
