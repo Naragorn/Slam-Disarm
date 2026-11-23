@@ -1,0 +1,23 @@
+# Probe (2026-11-23): slam the NPC's sword forearm straight down; the sword's tip hangs a hand's width above the floor.
+wait-level
+set-option SlamDisarm "Slam Disarm Enabled" true
+set-option SlamDisarm "Debug Logging" true
+set-option SlamDisarm "Slams To Disarm" 2
+set-option SlamDisarm "Disarm Chance" 1
+frame-rate 90
+player-eyes
+spawn-npc HumanMale distance=0.5 facing=0 brain=HumanDummy container=CivilianMeleeSword
+npc-grab SwordShortCommon hand=left
+expect-npc holding True within=2
+player-grab-npc LeftArm section=Lower
+wait 0.3
+record-start floor fps=30 width=960 height=540 views=side,npc distance=2.2 rise=0.6 angle=90
+mark
+player-slam 0,-0.6,0 speed=6 hold=0.4
+wait 0.8
+player-slam 0,-0.6,0 speed=12 hold=0.4
+wait 0.8
+player-slam 0,-0.8,-0.2 speed=12 hold=0.4
+wait 0.8
+record-stop
+quit

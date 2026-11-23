@@ -8,7 +8,7 @@ Everything about how the mod is built and tested: versions, the game APIs used a
 |---|---|
 | 1. Project, pure logic + unit tests, game glue, Mod Menu, smoke scenario | built 2026-11-22 on Windows. **Unit tests: 90/90 pass** (`dotnet test`; written first: 63 of 90 failed on the stubs, the 27 option-spec tests passed, then all green after the logic). **Release build: 0 warnings, 0 errors** against the Windows install's `ThunderRoad.dll`. |
 | 2. Headless runs | **2/2 pass** on Linux (2026-11-22, `artifacts/harness/20261122-210619`): `0-smoke.txt` (renamed from `smoke.txt` so it runs first; load lines, 16 options with defaults, live toggles, "Turned off" line, no exceptions) and `1-grab.txt` (a real grab of the NPC's forearm starts the watch, letting go stops it, Forearm Grab Counts off starts nothing). No code change was needed. |
-| 3. Real slam in the game | **Not passing headless yet** (`harness/owed/1-slam.txt`, see "Harness"). Headset check owed. |
+| 3. Real slam in the game | **Not passing headless yet** (`harness/owed/1-slam.txt`, see "Harness"). 2026-11-23: the grab now holds through the slam; the NPC's hand meets the block too slowly (1-2 m/s, the game's floor is 2 m/s). Headset check owed. |
 
 The headless runs are the only in-game evidence so far (no headset). Every other "verified" below means read in the decompiled DLL and compiled against it.
 
@@ -98,16 +98,19 @@ Per frame: one read of each player hand's grab (no allocation; a struct and a fe
 | `0-smoke.txt` | load lines, 16 options with categories and defaults, live toggles, "Turned off" line, no exceptions |
 | `1-grab.txt` | `player-grab-npc LeftArm section=Lower` on a HumanDummy holding a sword: `GRAB ... watching Left hand with 'SwordShortCommon'`, `stopped watching` on release; with Forearm Grab Counts off no watch |
 | `owed/1-slam.txt` | not run by `tools/harness.sh`; fails, see below |
+| `probe/*.txt` | not run by `tools/harness.sh`: the measurements behind the slam scenario (where the bodies are, a sideways slam, straight-down slams) |
 
-BasHarness got the steps for this on 2026-11-22: `player-grab-npc` (the controller reaches for the handle, then `RagdollHand.Grab`), `player-slam` (controller moved at a set speed, real physics), `place-block` (a static box with the ground's layer and physics material, so it counts as World). Run `tools/harness.sh harness/owed/1-slam.txt` by hand.
+BasHarness got the steps for this on 2026-11-22: `player-grab-npc` (the controller reaches for the handle, then `RagdollHand.Grab`), `player-slam` (controller moved at a set speed, real physics), `place-block` (a static box with the ground's layer and physics material, so it counts as World). On 2026-11-23: `player-eyes` (head at the creature's eye height), `place-block from=npc-hand` and its refusal of a block inside a body, and a per-frame `player-slam` trace in Player.log. Run `tools/harness.sh harness/owed/1-slam.txt` by hand.
 
-**Why the slam does not pass yet** (20 runs, logs under `artifacts/harness/20261122-20*`):
+**Why the slam does not pass yet** (first 20 runs 2026-11-22, `artifacts/harness/20261122-20*`; 12 more 2026-11-23, `artifacts/harness/20261123-09*`, probes in `harness/probe/`):
 
-- The block does get hit, but the first blocks had no physics material the game knows; `CollisionHandler.OnCollisionEnter` then logs `Target physics material not found` and raises no event. Fixed in `place-block` (it copies the ground's material); the warnings are gone.
-- The HumanDummy stands about 0.8 m in front of the player's shoulders. When the held forearm is pushed down onto a block, the game drops the grab: `PlayerHand.ManagedUpdate` lets go when the grip is farther from the shoulders than the arm reaches (1.22 m here) and `PlayerHand.stuckBehaviour` is `Drop` (the default). A block high enough to stay in reach sits right under the NPC's hand, so the sword already rests on it and there is no impact.
-- Every slam contact so far was classed `Creature` (the NPC's arm against the player's hand or bodies), never `World`. The mod's decision for those is right (`Creature` never counts).
+- Fixed: blocks without a physics material the game knows (`CollisionHandler.OnCollisionEnter` logs `Target physics material not found` and raises no event). `place-block` copies the ground's material.
+- Fixed, and the first runs' explanation was wrong: the grab was not lost to the reach rule. It was lost the moment the block appeared. The 0.6 m block sat inside both men's legs, both bodies and the NPC's sword, and the physics flung them apart. `place-block` now refuses a block inside any body and names each one with its place.
+- Fixed: the mock headset sits 0.16 m above the player creature's eyes (head 1.75 m, eyes 1.59 m above the feet), because the harness marks the calibration done without measuring anyone. The game measures a grab's reach from the head (the shoulder centre is the head: `Morphology.armsToEyesHeight` is never set and stays 0). `player-eyes` moves the head to the eyes. Since then the grab holds through every slam (grip at most 0.96 m from the head, reach 1.22 m).
+- Open: the NPC's hand reaches the block, but too slowly. Moving the controller 0.6 m down at 12 m/s brings the NPC's forearm down only 0.12-0.24 m, at 2-3 m/s at best and about 1-2 m/s where it meets a block it can reach. The game raises no collision event for a ragdoll part that meets the world slower than `Ragdoll.collisionMinVelocity` (2 m/s, read in the decompiled DLL), and the mod counts only from Min Slam Speed (2.5 m/s). So no `World` contact has been logged yet; every logged contact is `Creature`.
+- Seen, not explained: while the player holds the NPC's forearm, the player's own hand stays at the NPC's chest (1.06 m, in the film and in the trace) and does not follow the controller. The NPC's arm seems to move only through its IK target, which `HandleRagdoll.OnGrab` parents to the player's controller grip. Whether a real player's hand drags the arm harder in the headset is not known.
 
-Next cheapest step: get the NPC closer to the player's shoulders (a step that moves the player towards the NPC), or set `PlayerHand.stuckBehaviour = Hold` for the scenario (a real game option, but not the default). In the headset the same reach rule applies: a player slamming a wrist onto a low table must step in or crouch.
+Next step: find out why the player's hand stays put while it holds an NPC (the grab's joint, `HandleRagdoll.RefreshJointAndCollision`). If the harness grab differs from a real one, fix the harness; if not, the headset will show the same slow arm, and then Min Slam Speed and the game's 2 m/s floor are a question for the mod. In the headset the reach rule is the same: a player slamming a wrist onto a low table must step in or crouch.
 
 ## Build
 

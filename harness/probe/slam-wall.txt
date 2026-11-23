@@ -1,0 +1,21 @@
+# Probe (2026-11-23): slam the NPC's sword forearm sideways against a block beside it (a wall), out where nothing is.
+wait-level
+set-option SlamDisarm "Slam Disarm Enabled" true
+set-option SlamDisarm "Debug Logging" true
+set-option SlamDisarm "Slams To Disarm" 2
+set-option SlamDisarm "Disarm Chance" 1
+frame-rate 90
+spawn-npc HumanMale distance=0.5 facing=0 brain=HumanDummy container=CivilianMeleeSword
+npc-grab SwordShortCommon hand=left
+expect-npc holding True within=2
+player-grab-npc LeftArm section=Lower
+wait 0.3
+place-block 0.3,0,0 size=0.3
+record-start wall fps=30 width=960 height=540 views=side,npc distance=2.2 rise=1.0 angle=0
+mark
+player-slam 0.45,0,0 speed=6 hold=0.4
+wait 0.5
+player-slam 0.45,0,0 speed=6 hold=0.4
+wait 0.5
+record-stop
+quit
