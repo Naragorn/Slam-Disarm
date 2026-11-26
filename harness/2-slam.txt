@@ -30,7 +30,7 @@ expect-log [SlamDisarm] GRAB |
 wait 1
 player-slam 0.2,0.3,0 speed=1.5 hold=1 back=false
 place-block 0,-0.30,0 size=0.12 from=npc-hand
-record-start slam fps=30 width=960 height=540 views=side,npc distance=1.8 rise=0.8 angle=90
+record-start slam fps=30 width=960 height=540 views=side,npc distance=1.8 rise=0.8 angle=90 audio=true
 mark
 player-slam 0,-0.7,0 speed=6
 expect-log [SlamDisarm] SLAM |
@@ -38,14 +38,15 @@ wait 0.5
 player-slam 0,-0.7,0 speed=6
 await-log 2 [SlamDisarm] DISARM |
 wait 1
-record-stop
 expect-npc holding False within=2
 player-release
 
-# No regrab: a sword put into the hand is let go again.
+# No regrab: a sword put into the hand is let go again (still in the film, with the sound of the dropped swords).
 mark
 npc-grab SwordShortCommon hand=left
 expect-npc holding False within=1
 expect-log [SlamDisarm] REGRAB |
+wait 1
+record-stop
 expect-no-log Exception
 quit
